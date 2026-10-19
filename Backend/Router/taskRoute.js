@@ -1,9 +1,7 @@
-
 const express = require('express');
 const router = express.Router();
 const Task = require('../model/task_schema');
 const User = require('../model/userSchema');
-
 
 // Get all tasks
 const getTask = async (req, res) => {
@@ -20,7 +18,8 @@ const getTask = async (req, res) => {
 // Delete task by title
 const deleteTask = async (req, res) => {
     try {
-        const {title} = req.params;
+        const { title } = req.params;
+
         const taskToDelete = await Task.findOneAndDelete({ title });
 
         if (!taskToDelete) {
@@ -28,6 +27,7 @@ const deleteTask = async (req, res) => {
                 message: 'Task not found'
             });
         }
+
         return res.status(200).json({
             message: 'Task deleted successfully'
         });
@@ -37,11 +37,13 @@ const deleteTask = async (req, res) => {
         });
     }
 };
+
 // Update task by title
 const updateTask = async (req, res) => {
     try {
         const { title } = req.params;
         const { description, status } = req.body;
+
         const existingTask = await Task.findOne({ title });
 
         if (!existingTask) {
@@ -49,18 +51,26 @@ const updateTask = async (req, res) => {
                 message: 'Task not found'
             });
         }
-        if (status !== undefined && !['pending', 'completed'].includes(status)) {
+
+        if (
+            status !== undefined &&
+            !['pending', 'completed'].includes(status)
+        ) {
             return res.status(400).json({
                 message: 'Status must be either pending or completed'
             });
         }
+
         if (description !== undefined) {
             existingTask.description = description;
         }
+
         if (status !== undefined) {
             existingTask.status = status;
         }
+
         await existingTask.save();
+
         return res.status(200).json(existingTask);
     } catch (error) {
         return res.status(500).json({
@@ -68,8 +78,9 @@ const updateTask = async (req, res) => {
         });
     }
 };
+
 // Create a task for an existing or new user
-router.post('/api/user', async (req, res) => {
+router.post('/user', async (req, res) => {
     try {
         const { name, email, title, description } = req.body;
 
@@ -85,6 +96,7 @@ router.post('/api/user', async (req, res) => {
         });
 
         let userCreated = false;
+
         // Create user if not found
         if (!existingUser) {
             existingUser = await User.create({
@@ -97,24 +109,31 @@ router.post('/api/user', async (req, res) => {
 
         // Create task and associate it with the user
         const newTask = await Task.create({
-            title,
-            description,
+            title: title.trim(),
+            description: description.trim(),
             user: existingUser._id
         });
 
         return res.status(201).json({
-            message: userCreated?'New user and task created successfully':'Task added to existing user successfully',
+            message: userCreated
+                ? 'New user and task created successfully'
+                : 'Task added to existing user successfully',
             user: existingUser,
             task: newTask
         });
-
     } catch (error) {
         console.error(error);
+
         return res.status(500).json({
             message: 'Failed to create user or task'
         });
     }
 });
+
+// Routes
+router.get('/tasks', getTask);
+router.delete('/tasks/:title', deleteTask);
+router.put('/tasks/:title', updateTask);
 
 module.exports = {
     router,
