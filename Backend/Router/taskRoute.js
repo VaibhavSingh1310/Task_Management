@@ -21,7 +21,8 @@ const getTask = async (req, res) => {
             metadata:{
                 totalTask:totalPages,
                 totalPages,
-                currentPage:page
+                currentPage : santpage,
+                limit : santLimit
             },
             data : tasks
         });
