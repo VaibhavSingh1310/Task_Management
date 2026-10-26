@@ -6,11 +6,29 @@ const User = require('../model/userSchema');
 // Get all tasks
 const getTask = async (req, res) => {
     try {
-        const tasks = await Task.find().populate('user');
-        return res.status(200).json(tasks);
+        const page = parseInt(req.query.page,10) || 1;
+        const limit = parseInt(req.query.limit,10) || 10;
+        const santpage = page>1?page:1;
+        const santLimit = limit<1?0:limit;
+        skip = (santpage - 1)*santLimit;
+        const{tasks,totalPages} = await Promise.all([
+            Task.find().populate('user').sort({ createdAt: -1 }).skip(skip).limit(santLimit),
+            Task.countDocuments()
+        ]);
+        totalPages = Math.ceil(totalPages/santLimit);
+        return res.status(200).json({
+            success:true,
+            metadata:{
+                totalTask:totalPages,
+                totalPages,
+                currentPage:page
+            },
+            data : tasks
+        });
     } catch (error) {
         return res.status(500).json({
-            message: 'Failed to get tasks'
+            success:false,
+            message: 'Failed to retrieve tasks'
         });
     }
 };
