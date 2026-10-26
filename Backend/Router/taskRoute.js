@@ -6,7 +6,7 @@ const User = require('../model/userSchema');
 // Get all tasks
 const getTask = async (req, res) => {
     try {
-        const page = parseInt(req.query.page,10) || 1;
+         const page = parseInt(req.query.page,10) || 1;
         const limit = parseInt(req.query.limit,10) || 10;
         const santpage = page>1?page:1;
         const santLimit = limit<1?0:limit;
