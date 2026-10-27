@@ -6,29 +6,74 @@ const User = require('../model/userSchema');
 // Get all tasks
 const getTask = async (req, res) => {
     try {
-        const page = parseInt(req.query.page, 10) || 1;
+        // const page = parseInt(req.query.page, 10) || 1;
+        // const limit = parseInt(req.query.limit, 10) || 10;
+        // const safePage = page > 1 ? page : 1;
+        // const safeLimit = limit < 1 ? 10 : limit;
+        // const skip = (safePage - 1) * safeLimit;
+
+        // const [tasks, totalTask] = await Promise.all([
+        //     Task.find().populate('user').sort({ createdAt: -1 }).skip(skip).limit(safeLimit),
+        //     Task.countDocuments()
+        // ]);
+
+        // const totalPages = Math.ceil(totalTask / safeLimit);
+        // return res.status(200).json({
+        //     success: true,
+        //     metadata: {
+        //         totalTask,
+        //         totalPages,
+        //         currentPage: safePage,
+        //         limit: safeLimit
+        //     },
+        //     data: tasks
+        // });
+        // 1. Receive and sanitize limit
         const limit = parseInt(req.query.limit, 10) || 10;
-        const safePage = page > 1 ? page : 1;
-        const safeLimit = limit < 1 ? 10 : limit;
-        const skip = (safePage - 1) * safeLimit;
-
-        const [tasks, totalTask] = await Promise.all([
-            Task.find().populate('user').sort({ createdAt: -1 }).skip(skip).limit(safeLimit),
-            Task.countDocuments()
-        ]);
-
-        const totalPages = Math.ceil(totalTask / safeLimit);
+        const sanitizedLimit = limit < 1 ? 10 : Math.min(limit, 100);
+        // 2. Receive cursor from client
+        const { nextCursor } = req.query;
+        // 3. Create empty query
+        const query = {};
+        // 4. If cursor exists, update database filter
+        if (nextCursor) {
+            if (!mongoose.isValidObjectId(nextCursor)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid cursor"
+                });
+            }
+            query._id = {
+                $lt: new mongoose.Types.ObjectId(nextCursor)
+            };
+        }
+        // 5. Access data up to limit + 1
+        const task = await Task.find(query)
+            .populate("user", "name email")
+            .sort({ _id: -1 })
+            .limit(sanitizedLimit + 1);
+        // 6. Check whether further data exists
+        const hasNext = task.length > sanitizedLimit;
+        // 7. If extra data exists, remove the extra item
+        if (hasNext) {
+            task.pop();
+        }
+        // 8. Set the new cursor using the last returned item's ID
+        const lastItem = task[task.length - 1];
+        const newCursor =
+            hasNext && lastItem ? lastItem._id.toString() : null;
+        // 9. Send response
         return res.status(200).json({
             success: true,
-            metadata: {
-                totalTask,
-                totalPages,
-                currentPage: safePage,
-                limit: safeLimit
+            pagination: {
+                limit: sanitizedLimit,
+                hasNext,
+                nextCursor: newCursor
             },
-            data: tasks
+            data: task
         });
     } catch (error) {
+        console.error("Get tasks error:", error);
         return res.status(500).json({
             success: false,
             message: 'Failed to retrieve tasks'
