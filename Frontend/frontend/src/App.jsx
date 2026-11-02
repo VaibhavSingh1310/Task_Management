@@ -22,7 +22,7 @@ function App() {
       const data = await response.json()
       setTask(data)
     } catch (error) {
-      console.error(error)
+      console.error(error)   
       alert('Failed to load tasks. Check that the backend is running.')
     }
   }
