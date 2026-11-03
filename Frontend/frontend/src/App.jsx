@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-const API = 'http://localhost:3000/api'
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 function App() {
   const [task, setTask] = useState([])
@@ -20,7 +20,7 @@ function App() {
       }
 
       const data = await response.json()
-      setTask(data)
+      setTask(data.data || [])
     } catch (error) {
       console.error(error)   
       alert('Failed to load tasks. Check that the backend is running.')
@@ -28,7 +28,33 @@ function App() {
   }
 
   useEffect(() => {
-    getTask()
+    let cancelled = false
+
+    async function loadTasks() {
+      try {
+        const response = await fetch(`${API}/tasks`)
+
+        if (!response.ok) {
+          throw new Error('Failed to get tasks')
+        }
+
+        const data = await response.json()
+        if (!cancelled) {
+          setTask(data.data || [])
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error(error)
+          alert('Failed to load tasks. Check that the backend is running.')
+        }
+      }
+    }
+
+    loadTasks()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Add a task
